@@ -55,7 +55,7 @@ class EventHandler(FileSystemEventHandler):
             return
         self.logger.info("Created: %s", event.src_path)
         
-        remotePath = osp.join(self.remoteDir, event.src_path.replace(self.basePath))
+        remotePath = osp.join(self.remoteDir, event.src_path.replace(self.basePath, ""))
         if save(self.bucketName, remotePath, event.src_path):
             self.logger.info("Saved %s to S3", event.src_path)
         else:
