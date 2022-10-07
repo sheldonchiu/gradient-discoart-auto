@@ -32,5 +32,5 @@ if __name__ == '__main__':
     save_config(config, newName)
     utils.save(bucketName, osp.join(osp.dirname(configFilePath), newName), newName)
 
-    observer = utils.start_watching(bucketName=bucketName, outputPath=basePath, remoteDir)
+    observer = utils.start_watching(bucketName=bucketName, outputPath=basePath, remoteDir=remoteDir)
     da = create(**config)
