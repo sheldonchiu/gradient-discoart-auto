@@ -21,23 +21,24 @@ def getConfig(bucketName, remoteFile):
     client.fget_object(bucketName, remoteFile, localFile)
     return localFile
 
-def save(bucketName, baseName, file):
+def save(bucketName, remotePath, file):
     if osp.isfile(file):
-        remotePath = file.replace(baseName,"")
         try:
             client.fput_object(bucketName, remotePath, file)
             return True
         except:
+            logging.exception("message")
             return False
     return False
 
 class EventHandler(FileSystemEventHandler):
 
-    def __init__(self, basePath, bucketName, logger=None):
+    def __init__(self, bucketName, remoteDir, basePath, logger=None):
         super(EventHandler, self).__init__()
-        self.basePath = basePath
         self.logger = logger or logging.root
         self.bucketName = bucketName
+        self.remoteDir = remoteDir
+        self.basePath = basePath
 
     def on_moved(self, event):
         super(EventHandler, self).on_moved(event)
@@ -53,7 +54,9 @@ class EventHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         self.logger.info("Created: %s", event.src_path)
-        if save(self.bucketName, self.basePath, event.src_path):
+        
+        remotePath = osp.join(self.remoteDir, event.src_path.replace(self.basePath))
+        if save(self.bucketName, remotePath, event.src_path):
             self.logger.info("Saved %s to S3", event.src_path)
         else:
             self.logger.error("Failed to save %s to S3", event.src_path)
@@ -71,16 +74,17 @@ class EventHandler(FileSystemEventHandler):
         if event.is_directory or '.part' in event.src_path:
             return
         self.logger.info("Modified: %s", event.src_path)
-        if save(self.bucketName, self.basePath, event.src_path):
+        remotePath = osp.join(self.remoteDir, event.src_path.replace(self.basePath))
+        if save(self.bucketName, remotePath, event.src_path):
             self.logger.info("Saved %s to S3", event.src_path)
         else:
             self.logger.error("Failed to save %s to S3", event.src_path)
     
             
-def start_watching(basePath = "/storage/discoart/", bucketName="discoart"):
-    event_handler = EventHandler(basePath, bucketName)
+def start_watching(bucketName="discoart", outputPath = "/storage/discoart/", remoteDir=None):
+    event_handler = EventHandler(bucketName,  remoteDir, outputPath)
     observer = Observer()
-    observer.schedule(event_handler, basePath, recursive=True)
+    observer.schedule(event_handler, outputPath, recursive=True)
     observer.start()
     return observer
 
