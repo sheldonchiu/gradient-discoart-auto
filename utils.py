@@ -21,6 +21,16 @@ def getConfig(bucketName, remoteFile):
     client.fget_object(bucketName, remoteFile, localFile)
     return localFile
 
+def save(bucketName, baseName, file):
+    if osp.isfile(file):
+        remotePath = file.replace(baseName,"")
+        try:
+            client.fput_object(bucketName, remotePath, file)
+            return True
+        except:
+            return False
+    return False
+
 class EventHandler(FileSystemEventHandler):
 
     def __init__(self, basePath, bucketName, logger=None):
@@ -43,7 +53,7 @@ class EventHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         self.logger.info("Created: %s", event.src_path)
-        if self.save(event.src_path):
+        if save(self.bucketName, self.basePath, event.src_path):
             self.logger.info("Saved %s to S3", event.src_path)
         else:
             self.logger.error("Failed to save %s to S3", event.src_path)
@@ -61,22 +71,11 @@ class EventHandler(FileSystemEventHandler):
         if event.is_directory or '.part' in event.src_path:
             return
         self.logger.info("Modified: %s", event.src_path)
-        if self.save(event.src_path):
+        if save(self.bucketName, self.basePath, event.src_path):
             self.logger.info("Saved %s to S3", event.src_path)
         else:
             self.logger.error("Failed to save %s to S3", event.src_path)
     
-    def save(self, file):
-        if osp.isfile(file):
-            filename = osp.basename(file)
-            remotePath = file.replace(self.basePath,"")
-            try:
-                client.fput_object(
-                self.bucketName, remotePath, file,
-                )
-            except:
-                return False
-        return True
             
 def start_watching(basePath = "/storage/discoart/", bucketName="discoart"):
     event_handler = EventHandler(basePath, bucketName)
