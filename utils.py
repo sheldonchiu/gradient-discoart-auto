@@ -1,8 +1,8 @@
 import logging
 import os
 import os.path as osp
-from minio import Minio
-from minio.error import S3Error
+import boto3
+from botocore.exceptions import ClientError
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -10,23 +10,24 @@ logging.basicConfig(level=logging.INFO,
                 format='%(asctime)s - %(message)s',
                 datefmt='%Y-%m-%d %H:%M:%S')
 
-client = Minio(
-    os.environ['S3_HOST_URL'],
-    access_key= os.environ['S3_ACCESS_KEY'],
-    secret_key= os.environ['S3_SECRET_KEY'],
+s3 = boto3.client('s3',
+  endpoint_url = os.environ['S3_HOST_URL'],
+  aws_access_key_id = os.environ['S3_ACCESS_KEY'],
+  aws_secret_access_key = os.environ['S3_SECRET_KEY']
 )
+
 
 def getConfig(bucketName, remoteFile):
     localFile = osp.basename(remoteFile)
-    client.fget_object(bucketName, remoteFile, localFile)
+    s3.download_file(bucketName, remoteFile, localFile)
     return localFile
 
 def save(bucketName, remotePath, file):
     if osp.isfile(file):
         try:
-            client.fput_object(bucketName, remotePath, file)
+            s3.upload_file(file, bucketName, remotePath)
             return True
-        except:
+        except ClientError:
             logging.exception("message")
             return False
     return False
